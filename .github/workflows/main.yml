@@ -1,0 +1,57 @@
+name: Build and Package htop
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      build-path: output
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf automake libtool pkg-config \
+            libncursesw5-dev build-essential
+
+      - name: Build htop
+        run: |
+          ./autogen.sh
+          ./configure
+          make
+          make DESTDIR=./output install
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-files
+          path: output/
+
+  package:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: build-files
+          path: output
+
+      - name: Create ZIP
+        run: |
+          cd output
+          zip -r ../htop-build.zip .
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: htop-zip
+          path: htop-build.zip
